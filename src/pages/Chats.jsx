@@ -1,6 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
-import AdminChats from "./Admin/AdminChats";
+import AdminChats from "./admin/AdminChats";
 import AgentChats from "./agent/AgentChats";
 
 const Chats = () => {
