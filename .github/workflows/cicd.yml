@@ -1,0 +1,30 @@
+name: Deploy Frontend Application
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+      - name: Login to docker hub
+        run: docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
+      - name: Build Docker Image
+        run: docker build -t rajataha/fyp-frontend --build-arg VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }} .
+      - name: Publish Image to DockerHub
+        run: docker push rajataha/fyp-frontend:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Pull Image from Docker Hub
+        run: docker pull rajataha/fyp-frontend:latest
+      - name: Delete old container
+        run: docker rm -f fyp-frontend
+      - name: Run Docker Container
+        run: docker run -d -p 5173:5173 --name fyp-frontend rajataha/fyp-frontend:latest
