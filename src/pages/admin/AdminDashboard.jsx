@@ -3,7 +3,9 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchChatbotByAdmin,
   fetchChatbotScript,
+  createChatbot,
 } from "../../redux/chatbot/chatbotThunks";
+import { clearMessages } from "../../redux/chatbot/chatbotSlice";
 import {
   fetchAdminDashboardStats,
   fetchAdminClientData,
@@ -16,6 +18,8 @@ import {
   Copy,
   Check,
   MessageCircle,
+  Plus,
+  X,
 } from "lucide-react";
 import {
   LineChart,
@@ -27,14 +31,22 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import toast from "react-hot-toast";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [chatbotName, setChatbotName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const {
     chatbot,
     script,
     loading: chatbotLoading,
+    error: chatbotError,
+    successMessage,
   } = useSelector((state) => state.chatbot);
   const {
     adminTotalAgents,
@@ -87,6 +99,18 @@ const AdminDashboard = () => {
     dispatch(fetchChatbotScript());
   }, [dispatch, selectedPeriod]);
 
+  // Show success or error messages
+  useEffect(() => {
+    if (successMessage) {
+      toast.success(successMessage);
+      dispatch(clearMessages());
+    }
+    if (chatbotError) {
+      toast.error(chatbotError);
+      dispatch(clearMessages());
+    }
+  }, [successMessage, chatbotError, dispatch]);
+
   // Mark initial load as complete when data is loaded
   useEffect(() => {
     if (adminStatus === "succeeded" && !initialLoadComplete) {
@@ -103,6 +127,25 @@ const AdminDashboard = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleCreateChatbot = async (e) => {
+    e.preventDefault();
+    if (!chatbotName.trim()) {
+      toast.error("Chatbot name is required");
+      return;
+    }
+
+    setIsSubmitting(true);
+    await dispatch(createChatbot({ chatbotName, description }));
+    setIsSubmitting(false);
+    setShowCreateModal(false);
+    setChatbotName("");
+    setDescription("");
+
+    // Refresh chatbot data
+    dispatch(fetchChatbotByAdmin());
+    dispatch(fetchChatbotScript());
   };
 
   // Only show the loading spinner for initial page load
@@ -153,9 +196,7 @@ const AdminDashboard = () => {
               <div className="flex justify-between">
                 <div>
                   <p className="text-sm text-gray-500">{card.title}</p>
-                  <p className="text-xl font-semibold mt-1">
-                    {card.value.toLocaleString()}
-                  </p>
+                  <p className="text-xl font-semibold mt-1">{card.value}</p>
                 </div>
                 <div
                   className={`${card.iconBg} p-2 rounded-full h-10 w-10 flex items-center justify-center`}
@@ -189,10 +230,17 @@ const AdminDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-white p-5 rounded-lg shadow-md h-full flex items-center justify-center">
-              <p className="text-gray-500">
+            <div className="bg-white p-5 rounded-lg shadow-md h-full flex flex-col items-center justify-center">
+              <p className="text-gray-500 mb-4">
                 No chatbot found. Please create one.
               </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              >
+                <Plus size={16} />
+                Create Chatbot
+              </button>
             </div>
           )}
         </div>
@@ -282,6 +330,73 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Create Chatbot Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/25 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Create New Chatbot</h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateChatbot}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Chatbot Name*
+                </label>
+                <input
+                  type="text"
+                  value={chatbotName}
+                  onChange={(e) => setChatbotName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter chatbot name"
+                  required
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter description (optional)"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Chatbot"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
