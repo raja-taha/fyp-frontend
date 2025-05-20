@@ -64,3 +64,20 @@ export const fetchChatbotScript = createAsyncThunk(
     }
   }
 );
+
+export const updateChatbot = createAsyncThunk(
+  "chatbot/updateChatbot",
+  async ({ chatbotId, ...updateData }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(
+        `/api/chatbots/edit/${chatbotId}`,
+        updateData
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update chatbot"
+      );
+    }
+  }
+);
