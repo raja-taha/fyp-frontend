@@ -4,6 +4,7 @@ import {
   fetchChatbotByAdmin,
   fetchChatbotScript,
   createChatbot,
+  updateChatbot,
 } from "../../redux/chatbot/chatbotThunks";
 import { clearMessages } from "../../redux/chatbot/chatbotSlice";
 import {
@@ -37,6 +38,7 @@ const AdminDashboard = () => {
   const dispatch = useDispatch();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [chatbotName, setChatbotName] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,6 +150,49 @@ const AdminDashboard = () => {
     dispatch(fetchChatbotScript());
   };
 
+  const handleEditChatbot = async (e) => {
+    e.preventDefault();
+
+    // Only proceed if at least one field has changed
+    if (
+      chatbotName.trim() === chatbot.name &&
+      description === chatbot.description
+    ) {
+      toast.error("Please change at least one field to update");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const updateData = {};
+    if (chatbotName.trim() !== chatbot.name)
+      updateData.chatbotName = chatbotName.trim();
+    if (description !== chatbot.description)
+      updateData.description = description;
+
+    await dispatch(
+      updateChatbot({
+        chatbotId: chatbot._id,
+        ...updateData,
+      })
+    );
+
+    setIsSubmitting(false);
+    setShowEditModal(false);
+
+    // Refresh chatbot data
+    dispatch(fetchChatbotByAdmin());
+    dispatch(fetchChatbotScript());
+  };
+
+  const openEditModal = () => {
+    if (chatbot) {
+      setChatbotName(chatbot.name || "");
+      setDescription(chatbot.description || "");
+      setShowEditModal(true);
+    }
+  };
+
   // Only show the loading spinner for initial page load
   if (!initialLoadComplete && (adminStatus === "loading" || chatbotLoading))
     return (
@@ -163,7 +208,32 @@ const AdminDashboard = () => {
   const statsCards = [
     {
       title: "Chatbot Name",
-      value: chatbot ? chatbot.name : "No Chatbot",
+      value: chatbot ? (
+        <div className="flex items-center">
+          <span>{chatbot.name}</span>
+          <button
+            onClick={openEditModal}
+            className="ml-2 p-1 hover:bg-gray-100 rounded-full"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-gray-500"
+            >
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+          </button>
+        </div>
+      ) : (
+        "No Chatbot"
+      ),
       icon: <MessageCircle size={24} className="text-green-500" />,
       iconBg: "bg-green-100",
     },
@@ -390,6 +460,72 @@ const AdminDashboard = () => {
                     </>
                   ) : (
                     "Create Chatbot"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Chatbot Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/25 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Edit Chatbot</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleEditChatbot}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Chatbot Name
+                </label>
+                <input
+                  type="text"
+                  value={chatbotName}
+                  onChange={(e) => setChatbotName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter chatbot name"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter description (optional)"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Updating...
+                    </>
+                  ) : (
+                    "Update Chatbot"
                   )}
                 </button>
               </div>

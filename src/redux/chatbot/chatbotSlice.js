@@ -4,6 +4,7 @@ import {
   fetchChatbotByAdmin,
   fetchChatbots,
   fetchChatbotScript,
+  updateChatbot,
 } from "./chatbotThunks";
 
 const chatbotSlice = createSlice({
@@ -68,6 +69,18 @@ const chatbotSlice = createSlice({
         state.script = action.payload;
       })
       .addCase(fetchChatbotScript.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(updateChatbot.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(updateChatbot.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMessage = "Chatbot updated successfully!";
+        state.chatbot = action.payload;
+      })
+      .addCase(updateChatbot.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
